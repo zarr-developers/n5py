@@ -1,0 +1,12 @@
+# Changes here will be overwritten by Copier; NEVER EDIT MANUALLY
+_commit: 2024.01.24
+_src_path: gh:scientific-python/cookie
+backend: hatch
+email: davis.v.bennett@gmail.com
+full_name: Davis Vann Bennett
+license: MIT
+org: zarr-developers
+project_name: n5py
+project_short_description: The N5 file format implemented in Python
+url: https://github.com/zarr-developers/n5py
+vcs: true
