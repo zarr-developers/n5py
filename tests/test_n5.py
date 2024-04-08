@@ -23,10 +23,12 @@ def test_make_n5_chunk_wrapper():
             dtype,
             chunk_shape=chunk_shape,
             compressor_config=codec.get_config(),
-            compressor=codec
+            compressor=codec,
         )
 
-    wrapper_a = N5ChunkWrapper(dtype, chunk_shape=chunk_shape, compressor_config=codec.get_config())
+    wrapper_a = N5ChunkWrapper(
+        dtype, chunk_shape=chunk_shape, compressor_config=codec.get_config()
+    )
     wrapper_b = N5ChunkWrapper(dtype, chunk_shape=chunk_shape, compressor=codec)
     assert wrapper_a == wrapper_b
 
