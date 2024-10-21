@@ -4,7 +4,6 @@ Copyright (c) 2024 Davis Vann Bennett. All rights reserved.
 n5py: The N5 file format implemented in Python
 """
 
-
 from __future__ import annotations
 
 from ._version import version as __version__
@@ -18,16 +17,21 @@ __all__ = ["__version__"]
 import os
 import struct
 import sys
-from typing import Any, Dict, Optional, cast
 import warnings
+from typing import Any, Dict, Optional, cast
 
 import numpy as np
 from numcodecs.abc import Codec
 from numcodecs.compat import ndarray_copy
 from numcodecs.registry import get_codec, register_codec
-
 from zarr.meta import ZARR_FORMAT, json_dumps, json_loads
-from zarr.storage import FSStore, NestedDirectoryStore, _prog_ckey, _prog_number, normalize_storage_path
+from zarr.storage import (
+    FSStore,
+    NestedDirectoryStore,
+    _prog_ckey,
+    _prog_number,
+    normalize_storage_path,
+)
 from zarr.storage import array_meta_key as zarr_array_meta_key
 from zarr.storage import attrs_key as zarr_attrs_key
 from zarr.storage import group_meta_key as zarr_group_meta_key
@@ -91,22 +95,23 @@ class N5Store(NestedDirectoryStore):
 
             return json_dumps(value)
 
-        elif key.endswith(zarr_array_meta_key):
+        if key.endswith(zarr_array_meta_key):
             key_new = key.replace(zarr_array_meta_key, n5_attrs_key)
             top_level = key == zarr_array_meta_key
-            value = array_metadata_to_zarr(self._load_n5_attrs(key_new), top_level=top_level)
+            value = array_metadata_to_zarr(
+                self._load_n5_attrs(key_new), top_level=top_level
+            )
             return json_dumps(value)
 
-        elif key.endswith(zarr_attrs_key):
+        if key.endswith(zarr_attrs_key):
             key_new = key.replace(zarr_attrs_key, n5_attrs_key)
             value = attrs_to_zarr(self._load_n5_attrs(key_new))
 
             if len(value) == 0:
                 raise KeyError(key_new)
-            else:
-                return json_dumps(value)
+            return json_dumps(value)
 
-        elif is_chunk_key(key):
+        if is_chunk_key(key):
             key_new = invert_chunk_coords(key)
 
         else:
@@ -127,7 +132,9 @@ class N5Store(NestedDirectoryStore):
             key_new = key.replace(zarr_array_meta_key, n5_attrs_key)
             top_level = key == zarr_array_meta_key
             n5_attrs = self._load_n5_attrs(key_new)
-            n5_attrs.update(**array_metadata_to_n5(json_loads(value), top_level=top_level))
+            n5_attrs.update(
+                **array_metadata_to_n5(json_loads(value), top_level=top_level)
+            )
             value = json_dumps(n5_attrs)
 
         elif key.endswith(zarr_attrs_key):
@@ -138,7 +145,9 @@ class N5Store(NestedDirectoryStore):
 
             for k in n5_keywords:
                 if k in zarr_attrs:
-                    warnings.warn(f"Attribute {k} is a reserved N5 keyword", UserWarning)
+                    warnings.warn(
+                        f"Attribute {k} is a reserved N5 keyword", UserWarning
+                    )
 
             # remove previous user attributes
             for k in list(n5_attrs.keys()):
@@ -180,16 +189,16 @@ class N5Store(NestedDirectoryStore):
             # group if not a dataset (attributes do not contain 'dimensions')
             return "dimensions" not in self._load_n5_attrs(key_new)
 
-        elif key.endswith(zarr_array_meta_key):
+        if key.endswith(zarr_array_meta_key):
             key_new = key.replace(zarr_array_meta_key, n5_attrs_key)
             # array if attributes contain 'dimensions'
             return "dimensions" in self._load_n5_attrs(key_new)
 
-        elif key.endswith(zarr_attrs_key):
+        if key.endswith(zarr_attrs_key):
             key_new = key.replace(zarr_attrs_key, n5_attrs_key)
             return self._contains_attrs(key_new)
 
-        elif is_chunk_key(key):
+        if is_chunk_key(key):
             key_new = invert_chunk_coords(key)
         else:
             key_new = key
@@ -233,7 +242,7 @@ class N5Store(NestedDirectoryStore):
 
             return sorted(new_children)
 
-        elif self._is_group(path):
+        if self._is_group(path):
             # replace n5 attribute file with respective zarr attribute files
             children.remove(n5_attrs_key)
             children.append(zarr_group_meta_key)
@@ -242,8 +251,7 @@ class N5Store(NestedDirectoryStore):
 
             return sorted(children)
 
-        else:
-            return children
+        return children
 
     def _load_n5_attrs(self, path: str) -> Dict[str, Any]:
         try:
@@ -272,11 +280,10 @@ class N5Store(NestedDirectoryStore):
     def _contains_attrs(self, path: str):
         if path is None:
             attrs_key = n5_attrs_key
+        elif not path.endswith(n5_attrs_key):
+            attrs_key = os.path.join(path, n5_attrs_key)
         else:
-            if not path.endswith(n5_attrs_key):
-                attrs_key = os.path.join(path, n5_attrs_key)
-            else:
-                attrs_key = path
+            attrs_key = path
 
         attrs = attrs_to_zarr(self._load_n5_attrs(attrs_key))
         return len(attrs) > 0
@@ -376,22 +383,23 @@ class N5FSStore(FSStore):
 
             return json_dumps(value)
 
-        elif key.endswith(zarr_array_meta_key):
+        if key.endswith(zarr_array_meta_key):
             key_new = key.replace(zarr_array_meta_key, self._array_meta_key)
             top_level = key == zarr_array_meta_key
-            value = array_metadata_to_zarr(self._load_n5_attrs(key_new), top_level=top_level)
+            value = array_metadata_to_zarr(
+                self._load_n5_attrs(key_new), top_level=top_level
+            )
             return json_dumps(value)
 
-        elif key.endswith(zarr_attrs_key):
+        if key.endswith(zarr_attrs_key):
             key_new = key.replace(zarr_attrs_key, self._attrs_key)
             value = attrs_to_zarr(self._load_n5_attrs(key_new))
 
             if len(value) == 0:
                 raise KeyError(key_new)
-            else:
-                return json_dumps(value)
+            return json_dumps(value)
 
-        elif is_chunk_key(key):
+        if is_chunk_key(key):
             key_new = self._swap_separator(key)
 
         else:
@@ -412,7 +420,9 @@ class N5FSStore(FSStore):
             key_new = key.replace(zarr_array_meta_key, self._array_meta_key)
             top_level = key == zarr_array_meta_key
             n5_attrs = self._load_n5_attrs(key_new)
-            n5_attrs.update(**array_metadata_to_n5(json_loads(value), top_level=top_level))
+            n5_attrs.update(
+                **array_metadata_to_n5(json_loads(value), top_level=top_level)
+            )
 
             value = json_dumps(n5_attrs)
 
@@ -424,7 +434,9 @@ class N5FSStore(FSStore):
 
             for k in n5_keywords:
                 if k in zarr_attrs.keys():
-                    warnings.warn(f"Attribute {k} is a reserved N5 keyword", UserWarning)
+                    warnings.warn(
+                        f"Attribute {k} is a reserved N5 keyword", UserWarning
+                    )
 
             # replace previous user attributes
             for k in list(n5_attrs.keys()):
@@ -465,16 +477,16 @@ class N5FSStore(FSStore):
             # group if not a dataset (attributes do not contain 'dimensions')
             return "dimensions" not in self._load_n5_attrs(key_new)
 
-        elif key.endswith(zarr_array_meta_key):
+        if key.endswith(zarr_array_meta_key):
             key_new = key.replace(zarr_array_meta_key, self._array_meta_key)
             # array if attributes contain 'dimensions'
             return "dimensions" in self._load_n5_attrs(key_new)
 
-        elif key.endswith(zarr_attrs_key):
+        if key.endswith(zarr_attrs_key):
             key_new = key.replace(zarr_attrs_key, self._attrs_key)
             return self._contains_attrs(key_new)
 
-        elif is_chunk_key(key):
+        if is_chunk_key(key):
             key_new = self._swap_separator(key)
 
         else:
@@ -515,15 +527,14 @@ class N5FSStore(FSStore):
                     new_children.append(entry)
             return sorted(new_children)
 
-        elif self._is_group(path):
+        if self._is_group(path):
             # replace n5 attribute file with respective zarr attribute files
             children.remove(self._group_meta_key)
             children.append(zarr_group_meta_key)
             if self._contains_attrs(path):
                 children.append(zarr_attrs_key)
             return sorted(children)
-        else:
-            return children
+        return children
 
     def _load_n5_attrs(self, path: str):
         try:
@@ -552,11 +563,10 @@ class N5FSStore(FSStore):
     def _contains_attrs(self, path: Optional[str]):
         if path is None:
             attrs_key = self._attrs_key
+        elif not path.endswith(self._attrs_key):
+            attrs_key = os.path.join(path, self._attrs_key)
         else:
-            if not path.endswith(self._attrs_key):
-                attrs_key = os.path.join(path, self._attrs_key)
-            else:
-                attrs_key = path
+            attrs_key = path
 
         attrs = attrs_to_zarr(self._load_n5_attrs(attrs_key))
         return len(attrs) > 0
@@ -599,7 +609,9 @@ def group_metadata_to_zarr(group_metadata: Dict[str, Any]) -> Dict[str, Any]:
     return group_metadata
 
 
-def array_metadata_to_n5(array_metadata: Dict[str, Any], top_level=False) -> Dict[str, Any]:
+def array_metadata_to_n5(
+    array_metadata: Dict[str, Any], top_level=False
+) -> Dict[str, Any]:
     """Convert array metadata from zarr to N5 format. If the `top_level` keyword argument is True,
     then the `N5` : N5_FORMAT key : value pair will be inserted into the metadata."""
 
@@ -611,14 +623,19 @@ def array_metadata_to_n5(array_metadata: Dict[str, Any], top_level=False) -> Dic
     try:
         dtype = np.dtype(array_metadata["dataType"])
     except TypeError:
-        raise TypeError(f"Data type {array_metadata['dataType']} is not supported by N5")
+        raise TypeError(
+            f"Data type {array_metadata['dataType']} is not supported by N5"
+        )
 
     array_metadata["dataType"] = dtype.name
     array_metadata["dimensions"] = array_metadata["dimensions"][::-1]
     array_metadata["blockSize"] = array_metadata["blockSize"][::-1]
 
     if "fill_value" in array_metadata:
-        if array_metadata["fill_value"] != 0 and array_metadata["fill_value"] is not None:
+        if (
+            array_metadata["fill_value"] != 0
+            and array_metadata["fill_value"] is not None
+        ):
             raise ValueError(
                 f"""Received fill_value = {array_metadata['fill_value']},
                 but N5 only supports fill_value = 0"""
@@ -634,7 +651,9 @@ def array_metadata_to_n5(array_metadata: Dict[str, Any], top_level=False) -> Dic
 
     if "filters" in array_metadata:
         if array_metadata["filters"] != [] and array_metadata["filters"] is not None:
-            raise ValueError("Received filters, but N5 storage does not support zarr filters")
+            raise ValueError(
+                "Received filters, but N5 storage does not support zarr filters"
+            )
         del array_metadata["filters"]
 
     assert "compression" in array_metadata
@@ -691,11 +710,12 @@ def attrs_to_zarr(attrs: Dict[str, Any]) -> Dict[str, Any]:
     return attrs
 
 
-def compressor_config_to_n5(compressor_config: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+def compressor_config_to_n5(
+    compressor_config: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
     if compressor_config is None:
         return {"type": "raw"}
-    else:
-        _compressor_config = compressor_config
+    _compressor_config = compressor_config
 
     # peel wrapper, if present
     if _compressor_config["id"] == N5ChunkWrapper.codec_id:
@@ -751,7 +771,9 @@ def compressor_config_to_n5(compressor_config: Optional[Dict[str, Any]]) -> Dict
     return n5_config
 
 
-def compressor_config_to_zarr(compressor_config: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+def compressor_config_to_zarr(
+    compressor_config: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
     codec_id = compressor_config["type"]
     zarr_config = {"id": codec_id}
 
@@ -779,7 +801,7 @@ def compressor_config_to_zarr(compressor_config: Dict[str, Any]) -> Optional[Dic
         zarr_config["filters"] = None
 
     elif codec_id == "gzip":
-        if "useZlib" in compressor_config and compressor_config["useZlib"]:
+        if compressor_config.get("useZlib"):
             zarr_config["id"] = "zlib"
             zarr_config["level"] = compressor_config["level"]
         else:
@@ -808,10 +830,16 @@ class N5ChunkWrapper(Codec):
 
         if compressor:
             if compressor_config is not None:
-                raise ValueError("Only one of compressor_config or compressor should be given.")
+                raise ValueError(
+                    "Only one of compressor_config or compressor should be given."
+                )
             compressor_config = compressor.get_config()
 
-        if compressor_config is None and compressor is None or compressor_config["id"] == "raw":
+        if (
+            compressor_config is None
+            and compressor is None
+            or compressor_config["id"] == "raw"
+        ):
             self.compressor_config = None
             self._compressor = None
         else:
@@ -830,8 +858,7 @@ class N5ChunkWrapper(Codec):
 
         if self._compressor:
             return header + self._compressor.encode(chunk)
-        else:
-            return header + chunk.tobytes(order="A")
+        return header + chunk.tobytes(order="A")
 
     def decode(self, chunk, out=None) -> bytes:
         len_header, chunk_shape = self._read_header(chunk)
@@ -854,23 +881,22 @@ class N5ChunkWrapper(Codec):
 
             return out
 
-        else:
-            if self._compressor:
-                chunk = self._compressor.decode(chunk)
+        if self._compressor:
+            chunk = self._compressor.decode(chunk)
 
-            # more expensive byteswap
-            chunk = self._from_big_endian(chunk)
+        # more expensive byteswap
+        chunk = self._from_big_endian(chunk)
 
-            # read partial chunk
-            if chunk_shape != self.chunk_shape:
-                chunk = np.frombuffer(chunk, dtype=self.dtype)
-                chunk = chunk.reshape(chunk_shape)
-                complete_chunk = np.zeros(self.chunk_shape, dtype=self.dtype)
-                target_slices = tuple(slice(0, s) for s in chunk_shape)
-                complete_chunk[target_slices] = chunk
-                chunk = complete_chunk
+        # read partial chunk
+        if chunk_shape != self.chunk_shape:
+            chunk = np.frombuffer(chunk, dtype=self.dtype)
+            chunk = chunk.reshape(chunk_shape)
+            complete_chunk = np.zeros(self.chunk_shape, dtype=self.dtype)
+            target_slices = tuple(slice(0, s) for s in chunk_shape)
+            complete_chunk[target_slices] = chunk
+            chunk = complete_chunk
 
-            return chunk
+        return chunk
 
     @staticmethod
     def _create_header(chunk):
@@ -884,7 +910,8 @@ class N5ChunkWrapper(Codec):
     def _read_header(chunk):
         num_dims = struct.unpack(">H", chunk[2:4])[0]
         shape = tuple(
-            struct.unpack(">I", chunk[i : i + 4])[0] for i in range(4, num_dims * 4 + 4, 4)
+            struct.unpack(">I", chunk[i : i + 4])[0]
+            for i in range(4, num_dims * 4 + 4, 4)
         )[::-1]
 
         len_header = 4 + num_dims * 4
